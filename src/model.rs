@@ -5,20 +5,38 @@ use crate::authservice::*;
 use crate::locservice::*;
 use crate::domain::*;
 
-pub enum Scene {
-    Null,
-    Projects(Vec<Project>),
-    Project(Project),
-    Users(Vec<User>),
-//    Workers(Vec<Worker>),
-//    Tasks(Vec<Task>),
+extern crate askama;
+use askama::Template;
+use stdweb::web::Node;
+use yew::virtual_dom::VNode;
+
+#[derive(Template)]
+#[template(path = "null.html")]
+pub struct NullView;
+
+#[derive(Template)]
+#[template(path = "projects.html")]
+pub struct ProjectsView {
+    pub projects: Vec<Project>,
 }
 
-pub struct Inputs {
-    pub project_name: String,
-    pub project_id:   String,
-//    pub worker_name:  WorkerName,
-//    pub task_name:    TaskName,
+#[derive(Template)]
+#[template(path = "users.html")]
+pub struct UsersView {
+    pub users: Vec<User>,
+}
+
+#[derive(Template)]
+#[template(path = "project_details.html")]
+pub struct ProjectView {
+    pub project: Project,
+}
+
+pub enum Scene {
+    Null,
+    Projects(ProjectsView),
+    Project(ProjectView),
+    Users(UsersView),
 }
 
 pub struct Model {
@@ -29,7 +47,6 @@ pub struct Model {
     pub link: ComponentLink<Model>,
     pub task: Option<FetchTask>,
     pub scene: Scene,
-    pub inputs: Inputs,
     pub auth_state: AuthState,
 }
 
@@ -44,12 +61,14 @@ impl Model {
             auth_state: AuthState::Unknown,
             task: None,
             scene: Scene::Null,
-            inputs: Inputs {
-                project_name: "".into(),
-                project_id:   "".into(),
-//                worker_name:  WorkerName("".into()),
-//                task_name:    TaskName("".into()),
-            },
         }
+    }
+
+    pub fn render_template(&self, template: &impl Template) -> Html<Self> {
+        VNode::VRef(
+            Node::from_html(
+                &template.render().unwrap()
+                ).unwrap()
+            )
     }
 }

@@ -11,6 +11,7 @@ use crate::model::*;
 use crate::domain::*;
 use crate::authservice::*;
 use stdweb::js;
+use stdweb::unstable::TryInto;
 
 pub enum Msg {
     Noop,
@@ -24,9 +25,7 @@ pub enum Msg {
     GetUsers,
     ChangeScene(Scene),
     GetProject(ProjectId),
-    AddProject,
-    UpdateProjectName(String),
-    UpdateProjectId(String),
+    AddProject(ProjectName),
 }
  
 pub fn parse_with_default<T>(s: &str, d: T)
@@ -91,10 +90,11 @@ impl Authable for http::request::Builder
     }
 }
 
-fn remote_host() -> &'static str
+fn remote_host() -> String
 {
-//    "http://cs586:8001"
-    "http://localhost:8001"
+    js!( return api_url; )
+    .try_into()
+    .unwrap()
 }
 
 
@@ -102,7 +102,7 @@ fn json_request<'a, T>(body: &'a T, auth: &AuthState, action: &str)
     -> Request<Json<&'a T>> 
     where T: Serialize
 {
-    Request::post(format!("{}/api/{}", remote_host(), action)) // TODO
+    Request::post(format!("{}/api/{}", remote_host(), action))
         .header("Content-Type", "application/json")
         .add_auth(auth)
         .body(Json(body))
@@ -112,7 +112,7 @@ fn json_request<'a, T>(body: &'a T, auth: &AuthState, action: &str)
 fn get_request(auth: &AuthState, action: &str) 
     -> Request<Nothing> 
 {
-    Request::get(format!("{}/api/{}", remote_host(), action)) // TODO
+    Request::get(format!("{}/api/{}", remote_host(), action))
         .add_auth(auth)
         .body(Nothing)
         .unwrap()
@@ -139,10 +139,40 @@ fn route(path: Vec<String>) -> Msg {
 fn hash_from_scene(scene: &Scene) -> String {
     match scene {
         Scene::Projects(_) => "projects".into(),
-        Scene::Project(p)  => format!("project/{}", p.id),
+        Scene::Project(view) => format!("project/{}", view.project.id),
         Scene::Users(_)    => "users".into(),
         Scene::Null        => "".into(),
     }
+}
+    
+fn register_add_project_js(model: &mut Model) {
+    let cb = model.link.send_back(Msg::AddProject);
+    let cb = move |x: ProjectName| cb.emit(x); 
+    
+    js!(
+        add_project = function(x) {
+            console.log("add_project(" + x + ")");
+            document.getElementById("add_project_name").value = "";
+            @{cb}(x);
+        };
+    );
+}
+
+fn register_get_project_js(model: &mut Model) {
+    let cb = model.link.send_back(Msg::GetProject);
+    let cb = move |x: ProjectId| cb.emit(x); 
+    
+    js!(
+        get_project = function(x) {
+            console.log("get_project(" + x + ")");
+            @{cb}(x);
+        };
+    );
+}
+            
+fn register_msg_js(model: &mut Model) {
+    register_add_project_js(model);
+    register_get_project_js(model);
 }
 
 pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
@@ -157,12 +187,9 @@ pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
         }
         Msg::Init => {
             log!("Msg::Init");
-            model.loc.init(
-                model.link.send_back(|_| Msg::Route)
-                );
-            model.auth.init(
-                model.link.send_back(Msg::AuthReady)
-                );
+            register_msg_js(model);
+            model.loc.init(model.link.send_back(|_| Msg::Route));
+            model.auth.init(model.link.send_back(Msg::AuthReady));
         }
         Msg::Login => {
             log!("Msg::Login");
@@ -187,7 +214,11 @@ pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
             log!("Msg::GetProjects");
             let req = get_request(&model.auth_state, "get_projects");
             fetch!(model, req, |projects: Vec<Project>| {
-                Msg::ChangeScene(Scene::Projects(projects))
+                Msg::ChangeScene(
+                    Scene::Projects(
+                        ProjectsView{projects}
+                    )
+                )
             });
         }
         Msg::ChangeScene(scene) => {
@@ -200,115 +231,38 @@ pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
             let req = get_request(&model.auth_state, &format!("get_project/{}", id));
             fetch!(model, req, |project: Option<Project>| {
                 if let Some(project) = project {
-                    Msg::ChangeScene(Scene::Project(project))
+                    Msg::ChangeScene(
+                        Scene::Project(
+                            ProjectView{project}
+                        )
+                    )
                 }
                 else {
                     Msg::Noop
                 }
             });
         }
-        Msg::AddProject => {
+        Msg::AddProject(name) => {
             log!("Msg::AddProject");
             let params = AddProjectParams {
-                name: model.inputs.project_name.clone(),
+                name: name
             };
             let req = json_request(&params, &model.auth_state, "add_project");
             fetch!(model, req, |_project_id: ProjectId| {
                 Msg::GetProjects
             });
-            model.inputs.project_name.clear();
         }
         Msg::GetUsers => {
             log!("Msg::GetUsers");
             let req = get_request(&model.auth_state, "get_users");
             fetch!(model, req, |users: Vec<User>| {
                 Msg::ChangeScene(
-                    Scene::Users(users)
+                    Scene::Users(
+                        UsersView{users}
+                    )
                 )
             });
         }
-//        Msg::AddWorker => {
-//            model.debug.push("AddWorker");
-//            let params = AddWorkerParams {
-//                name: model.inputs.worker_name.clone(),
-//            };
-//            let req = json_request(&params, "add_worker");
-//            fetch!(model, req, |_worker_id: WorkerID| {
-//                Msg::GetWorkers
-//            });
-//            model.inputs.worker_name.0.clear();
-//        }
-//        Msg::DeleteProject(project_id) => {
-//            model.debug.push("DeleteProject");
-//            let params = DeleteProjectParams { project_id };
-//            let req = json_request(&params, "delete_project");
-//            fetch!(model, req, |_success: bool| {
-//                Msg::GetProjects
-//            });
-//        }
-//        Msg::DeleteWorker(worker_id) => {
-//            model.debug.push("DeleteWorker");
-//            let params = DeleteWorkerParams { worker_id };
-//            let req = json_request(&params, "delete_worker");
-//            fetch!(model, req, |_success: bool| {
-//                Msg::GetWorkers
-//            });
-//        }
-//        Msg::AddTask => {
-//            unimplemented!()
-//        }
-        Msg::UpdateProjectName(x) => {
-            model.inputs.project_name = x;
-        }
-        Msg::UpdateProjectId(x) => {
-            model.inputs.project_id = x;
-        }
-//        Msg::UpdateWorkerInput(s) => {
-//            model.debug.push("UpdateWorkerInput");
-//            model.inputs.worker_name = s;
-//        }
-//        Msg::UpdateTaskInput(_,_) => {
-//            unimplemented!();
-//        }
-//        Msg::ViewProjects(projects) => {
-//            model.debug.push("ViewProjects");
-//            model.view = Scene::Projects(projects);
-//            model.task = None;
-//        }
-//        Msg::ViewWorkers(body) => {
-//            model.debug.push("ViewWorkers");
-//            model.view = Scene::Workers(body);
-//            model.task = None;
-//        }
-//        Msg::ViewTasks(body) => {
-//            model.debug.push("ViewTasks");
-//            model.view = Scene::Tasks(body);
-//            model.task = None;
-//        }
-//        Msg::GetProjects => {
-//            model.debug.push("GetProjects");
-//            let params = GetProjectsParams;
-//            let req = json_request(&params, "get_projects");
-//            fetch!(model, req, |projects: Vec<Project>| {
-//                Msg::ViewProjects(projects)
-//            });
-//        }
-//        Msg::GetWorkers => {
-//            model.debug.push("GetWorkers");
-//            let params = GetWorkersParams;
-//            let req = json_request(&params, "get_workers");
-//            fetch!(model, req, |workers: Vec<Worker>| {
-//                Msg::ViewWorkers(workers)
-//            });
-//        }
-//        Msg::GetTasks => {
-//            model.debug.push("GetTasks");
-//            let params = GetTasksParams;
-//            let req = json_request(&params, "get_tasks");
-//            fetch!(model, req, |tasks: Vec<Task>| {
-//                Msg::ViewTasks(tasks)
-//            });
-//        }
     }
     true
 }

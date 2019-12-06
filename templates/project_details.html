@@ -1,0 +1,13 @@
+<div>
+    <h2>{{ project.name }}</h2>
+    ID: {{ project.id }}
+    <br />
+    Tasks: 
+    <ul>
+        {% for task in project.tasks %}
+        <li>
+            {{ task.name }}
+        </li>
+        {% endfor %}
+    </ul>
+</div>

@@ -1,0 +1,17 @@
+<div>
+    <div>
+        <input id="add_project_name" placeholder="Project Name" />
+        <button onclick='add_project(document.getElementById("add_project_name").value);'>Add Project</button>
+    </div>
+    
+    <p>PROJECTS:</p>
+    <ul>
+        {% for project in projects %}
+        <li>
+            <a href="javascript:void(0)" onclick="get_project({{ project.id }})" >
+                {{ project.name }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>

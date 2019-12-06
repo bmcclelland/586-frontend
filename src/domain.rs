@@ -4,28 +4,41 @@ use serde::{ Serialize, Deserialize };
 
 pub type ProjectName = String;
 pub type ProjectId = i32;
+pub type TaskName = String;
+pub type TaskId = i32;
 
 //#[derive(Serialize,Deserialize,Debug)]
 //pub enum Perm {
 //};
 
-#[derive(Serialize,Deserialize,Debug,Clone)]
-pub struct Role {
-    pub id: String,
-    pub perms: Vec<i32>,
+macro_rules! domain_derive {
+    ($($i: item)+) => {
+        $(#[derive(Serialize,Deserialize,Debug,Clone)]
+        $i)+
+    }
 }
 
-#[derive(Serialize,Deserialize,Debug,Clone)]
-pub struct User {
-    pub id: String,
-    pub roles: Vec<Role>,
-}
+domain_derive! {
+    pub struct Role {
+        pub id: String,
+        pub perms: Vec<i32>,
+    }
+    
+    pub struct User {
+        pub id: String,
+        pub roles: Vec<Role>,
+    }
 
-#[derive(Serialize,Deserialize,Debug,Clone)]
-pub struct Project {
-    pub id: ProjectId,
-    pub name: ProjectName,
-    pub tasks: Vec<()>,
+    pub struct Task {
+        pub id: TaskId,
+        pub name: TaskName,
+    }
+
+    pub struct Project {
+        pub id: ProjectId,
+        pub name: ProjectName,
+        pub tasks: Vec<Task>,
+    }
 }
 
 #[derive(Serialize,Deserialize,Debug)]

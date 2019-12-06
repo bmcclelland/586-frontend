@@ -40,13 +40,6 @@ impl AuthService {
 
         js! {
             const callback = @{callback};
-            
-            const auth_config = {
-                // TODO not here
-                domain:    "dev-ztmxpnax.auth0.com",
-                client_id: "aBugMkF4ioYLtE02wWNo28lYxPhwx0eC",
-                leeway:    300
-            };
 
             const f = async () => {
                 let payload = null;
@@ -57,7 +50,6 @@ impl AuthService {
                 const auth_yes = async () => {
                     payload = @{default_yes}; 
                     const user  = await auth0.getUser();
-//                    const token = await auth0.getTokenSilently();
                     const token = (await auth0.getIdTokenClaims()).__raw;
                     console.log(token);
                     payload.Yes.name = user.name;

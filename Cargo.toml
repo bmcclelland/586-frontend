@@ -12,3 +12,4 @@ serde_json = "1.0.41"
 erased-serde = { version = "0.3.9" }
 failure = "0.1.6"
 stdweb = "0.4.20"
+askama = "0.8.0"
