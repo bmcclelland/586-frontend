@@ -1,0 +1,17 @@
+<div>
+    <div>
+        <input id="add_worker_name" placeholder="Worker Name" />
+        <button onclick='add_worker(document.getElementById("add_worker_name").value);'>Add Worker</button>
+    </div>
+    
+    <p>WORKERS:</p>
+    <ul>
+        {% for worker in workers %}
+        <li>
+            <a href="javascript:void(0)" onclick="get_worker({{ worker.id }})" >
+                {{ worker.name }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>

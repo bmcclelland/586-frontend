@@ -17,7 +17,13 @@ pub struct NullView;
 #[derive(Template)]
 #[template(path = "projects.html")]
 pub struct ProjectsView {
-    pub projects: Vec<Project>,
+    pub projects: Vec<ListProject>,
+}
+
+#[derive(Template)]
+#[template(path = "workers.html")]
+pub struct WorkersView {
+    pub workers: Vec<ListWorker>,
 }
 
 #[derive(Template)]
@@ -28,15 +34,30 @@ pub struct UsersView {
 
 #[derive(Template)]
 #[template(path = "project_details.html")]
-pub struct ProjectView {
-    pub project: Project,
+pub struct ProjectDetailsView {
+    pub project: ProjectDetails,
+}
+
+#[derive(Template)]
+#[template(path = "worker_details.html")]
+pub struct WorkerDetailsView {
+    pub worker: WorkerDetails,
+}
+
+#[derive(Template)]
+#[template(path = "task_details.html")]
+pub struct TaskDetailsView {
+    pub task: TaskDetails,
 }
 
 pub enum Scene {
     Null,
     Projects(ProjectsView),
-    Project(ProjectView),
+    Workers(WorkersView),
     Users(UsersView),
+    ProjectDetails(ProjectDetailsView),
+    WorkerDetails(WorkerDetailsView),
+    TaskDetails(TaskDetailsView),
 }
 
 pub struct Model {

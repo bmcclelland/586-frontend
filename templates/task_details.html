@@ -1,0 +1,11 @@
+<div>
+    <h2>{{ task.name }}</h2>
+    ID: {{ task.id }} <br />
+    Project: {{ task.project.name }} <br />
+    {% match task.opt_worker %}
+        {% when Some with (worker) %}
+            Worker: {{ worker.name }} <br />
+        {% when None %}
+            Worker: unassigned
+    {% endmatch %}
+</div>

@@ -6,6 +6,8 @@ pub type ProjectName = String;
 pub type ProjectId = i32;
 pub type TaskName = String;
 pub type TaskId = i32;
+pub type WorkerName = String;
+pub type WorkerId = i32;
 
 //#[derive(Serialize,Deserialize,Debug)]
 //pub enum Perm {
@@ -29,20 +31,50 @@ domain_derive! {
         pub roles: Vec<Role>,
     }
 
-    pub struct Task {
+    pub struct ListTask {
         pub id: TaskId,
         pub name: TaskName,
     }
 
-    pub struct Project {
+    pub struct ListProject {
         pub id: ProjectId,
         pub name: ProjectName,
-        pub tasks: Vec<Task>,
+    }
+    
+    pub struct ListWorker {
+        pub id: WorkerId,
+        pub name: WorkerName,
+    }
+
+    pub struct ProjectDetails {
+        pub id: ProjectId,
+        pub name: ProjectName,
+        pub tasks: Vec<ListTask>,
+    }
+    
+    pub struct WorkerDetails {
+        pub id: WorkerId,
+        pub name: WorkerName,
+        pub tasks: Vec<ListTask>,
+    }
+    
+    pub struct TaskDetails {
+        pub id: TaskId,
+        pub name: TaskName,
+        pub project: ListProject,
+        pub opt_worker: Option<ListWorker>,
+    }
+    
+    pub struct AddProjectParams {
+        pub name: ProjectName,
+    }
+    
+    pub struct AddWorkerParams {
+        pub name: WorkerName,
+    }
+    
+    pub struct AddTaskParams {
+        pub name: TaskName,
+        pub project_id: ProjectId,
     }
 }
-
-#[derive(Serialize,Deserialize,Debug)]
-pub struct AddProjectParams {
-    pub name: ProjectName,
-}
-

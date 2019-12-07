@@ -2,12 +2,20 @@
     <h2>{{ project.name }}</h2>
     ID: {{ project.id }}
     <br />
+    
     Tasks: 
+    <div>
+        <input id="add_task_name" placeholder="Task Name" />
+        <button onclick='add_task(document.getElementById("add_task_name").value, {{ project.id }});'>Add Task</button>
+    </div>
     <ul>
         {% for task in project.tasks %}
-        <li>
-            {{ task.name }}
-        </li>
+            <li>
+                <a href="javascript:void(0)" onclick="get_task({{ task.id }})" >
+                    {{ task.name }}
+                </a>
+            </li>
         {% endfor %}
+    </ul>
     </ul>
 </div>

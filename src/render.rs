@@ -46,6 +46,7 @@ fn view_nav(_model: &Model) -> Html<Model> {
     html! {
         <span>
             <button onclick=|_| Msg::GetProjects>{ "Projects" }</button>
+            <button onclick=|_| Msg::GetWorkers>{ "Workers" }</button>
             <button onclick=|_| Msg::GetUsers>{ "Users" }</button>
         </span>
     }
@@ -53,10 +54,13 @@ fn view_nav(_model: &Model) -> Html<Model> {
 
 fn view_scene(model: &Model) -> Html<Model> {
     match &model.scene {
-        Scene::Null           => model.render_template(&NullView),
-        Scene::Projects(view) => model.render_template(view),
-        Scene::Project(view)  => model.render_template(view),
-        Scene::Users(view)    => model.render_template(view),
+        Scene::Null                 => model.render_template(&NullView),
+        Scene::Projects(view)       => model.render_template(view),
+        Scene::Users(view)          => model.render_template(view),
+        Scene::Workers(view)        => model.render_template(view),
+        Scene::ProjectDetails(view) => model.render_template(view),
+        Scene::WorkerDetails(view)  => model.render_template(view),
+        Scene::TaskDetails(view)    => model.render_template(view),
     }
 }
 

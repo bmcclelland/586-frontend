@@ -1,0 +1,16 @@
+<div>
+    <h2>{{ worker.name }}</h2>
+    ID: {{ worker.id }}
+    <br />
+    Tasks: 
+    <ul>
+        {% for task in worker.tasks %}
+            <li>
+                <a href="javascript:void(0)" onclick="get_task({{ task.id }})" >
+                    {{ task.name }}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+    </ul>
+</div>
