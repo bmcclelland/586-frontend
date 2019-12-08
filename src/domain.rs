@@ -61,7 +61,7 @@ domain_derive! {
     pub struct TaskDetails {
         pub id: TaskId,
         pub name: TaskName,
-        pub project: ListProject,
+        pub project_name: ListProject,
         pub opt_worker: Option<ListWorker>,
     }
     
