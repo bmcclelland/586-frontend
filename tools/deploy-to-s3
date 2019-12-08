@@ -1,0 +1,5 @@
+#!/bin/env bash
+
+cargo-web deploy &&\
+sed -i "s/localhost/66.42.96.214/g" target/deploy/env.js &&\
+aws s3 sync --profile 586-deployer target/deploy s3://586-frontend
