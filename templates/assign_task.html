@@ -1,0 +1,9 @@
+<div>
+    <h2>Assign Worker to {{ task.name }}</h2>
+    <h3>Workers:</h3>
+    <ul>
+    {% for worker in workers %}
+        <li><a href="javascript:void(0)" onclick="assign_task({{task.id}}, {{worker.id }})" > {{ worker.name }} </a></li>
+    {% endfor %}
+    </ul>
+</div>

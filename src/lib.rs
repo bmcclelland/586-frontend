@@ -7,6 +7,7 @@ mod component;
 mod render;
 mod authservice;
 mod locservice;
+mod views;
 
 pub use model::Model;
 pub use msg::Msg;

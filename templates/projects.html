@@ -1,10 +1,9 @@
 <div>
+    <h2>All Projects</h2>
     <div>
         <input id="add_project_name" placeholder="Project Name" />
         <button onclick='add_project(document.getElementById("add_project_name").value);'>Add Project</button>
     </div>
-    
-    <p>PROJECTS:</p>
     <ul>
         {% for project in projects %}
         <li>

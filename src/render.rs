@@ -1,6 +1,7 @@
 use yew::prelude::*;
 use crate::model::*;
 use crate::msg::*;
+use crate::views::*;
 use crate::authservice::*;
 
 impl Renderable<Model> for Model {
@@ -61,6 +62,7 @@ fn view_scene(model: &Model) -> Html<Model> {
         Scene::ProjectDetails(view) => model.render_template(view),
         Scene::WorkerDetails(view)  => model.render_template(view),
         Scene::TaskDetails(view)    => model.render_template(view),
+        Scene::AssignTask(view)     => model.render_template(view),
     }
 }
 

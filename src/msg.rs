@@ -8,6 +8,7 @@ use yew::format::nothing::*;
 use failure::Error;
 use serde::{Serialize};
 use crate::model::*;
+use crate::views::*;
 use crate::domain::*;
 use crate::authservice::*;
 use stdweb::js;
@@ -30,8 +31,13 @@ pub enum Msg {
     GetWorker(WorkerId),
     GetTask(TaskId),
     AddProject(ProjectName),
-    AddTask((TaskName,WorkerId)),
+    AddTask((TaskName,ProjectId)),
     AddWorker(WorkerName),
+    PreViewAssignTask(TaskId),
+    ViewAssignTask(TaskDetails),
+    PostViewAssignTask(Vec<ListWorker>),
+    AssignTask((TaskId,WorkerId)),
+    UnassignTask(TaskId),
 }
  
 pub fn parse_with_default<T>(s: &str, d: T)
@@ -47,7 +53,7 @@ pub fn parse_with_default<T>(s: &str, d: T)
 macro_rules! fetch(
     ($self: ident, $req: ident, $do: expr) => {
         let callback = $self.link.send_back(
-            |rsp: Response<Json<Result<Result<_,String>,Error>>>| {
+            move |rsp: Response<Json<Result<Result<_,String>,Error>>>| {
                 let (meta, Json(body)) = rsp.into_parts();
                 if meta.status.is_success() {
                     match body {
@@ -95,32 +101,36 @@ impl Authable for http::request::Builder
     }
 }
 
+trait Requester {
+    fn get(&self, action: &str) -> Request<Nothing>;
+    fn post<'a, T: Serialize>(&self, action: &str, body: &'a T) 
+        -> Request<Json<&'a T>>;
+}
+
+impl Requester for Model {
+    fn get(&self, action: &str) -> Request<Nothing> {
+        Request::get(format!("{}/api/{}", remote_host(), action))
+            .add_auth(&self.auth_state)
+            .body(Nothing)
+            .unwrap()
+    }
+
+    fn post<'a, T: Serialize>(&self, action: &str, body: &'a T) 
+        -> Request<Json<&'a T>> 
+    {
+        Request::post(format!("{}/api/{}", remote_host(), action))
+            .header("Content-Type", "application/json")
+            .add_auth(&self.auth_state)
+            .body(Json(body))
+            .expect("Failed to build request")
+    }
+}
+
 fn remote_host() -> String
 {
     js!( return api_url; )
     .try_into()
     .unwrap()
-}
-
-
-fn json_request<'a, T>(body: &'a T, auth: &AuthState, action: &str) 
-    -> Request<Json<&'a T>> 
-    where T: Serialize
-{
-    Request::post(format!("{}/api/{}", remote_host(), action))
-        .header("Content-Type", "application/json")
-        .add_auth(auth)
-        .body(Json(body))
-        .expect("Failed to build request")
-}
-
-fn get_request(auth: &AuthState, action: &str) 
-    -> Request<Nothing> 
-{
-    Request::get(format!("{}/api/{}", remote_host(), action))
-        .add_auth(auth)
-        .body(Nothing)
-        .unwrap()
 }
 
 macro_rules! log(
@@ -140,25 +150,11 @@ fn route(path: Vec<String>) -> Msg {
         ["project", n] => Msg::GetProject(parse_with_default(n, 0)),
         ["worker", n]  => Msg::GetWorker(parse_with_default(n, 0)),
         ["task", n]    => Msg::GetTask(parse_with_default(n, 0)),
+        ["assign", n]  => Msg::PreViewAssignTask(parse_with_default(n, 0)),
         _              => Msg::Null,
     }
 }
 
-fn hash_from_scene(scene: &Scene) -> String {
-    match scene {
-        Scene::Null          => "".into(),
-        Scene::Projects(_)   => "projects".into(),
-        Scene::Workers(_)    => "workers".into(),
-        Scene::Users(_)      => "users".into(),
-        Scene::ProjectDetails(view) => 
-            format!("project/{}", view.project.id),
-        Scene::WorkerDetails(view) => 
-            format!("worker/{}", view.worker.id),
-        Scene::TaskDetails(view) => 
-            format!("task/{}", view.task.id),
-    }
-}
-    
 fn register_add_project_js(model: &mut Model) {
     let cb = model.link.send_back(Msg::AddProject);
     let cb = move |x: ProjectName| cb.emit(x); 
@@ -233,6 +229,42 @@ fn register_get_task_js(model: &mut Model) {
         };
     );
 }
+
+fn register_view_assign_task_js(model: &mut Model) {
+    let cb = model.link.send_back(Msg::PreViewAssignTask);
+    let cb = move |x: TaskId| cb.emit(x); 
+    
+    js!(
+        view_assign_task = function(x) {
+            console.log("view_assign_task(" + x + ")");
+            @{cb}(x);
+        };
+    );
+}
+
+fn register_assign_task_js(model: &mut Model) {
+    let cb = model.link.send_back(Msg::AssignTask);
+    let cb = move |x: TaskId, y: WorkerId| cb.emit((x,y)); 
+    
+    js!(
+        assign_task = function(x,y) {
+            console.log("assign_task(" + x + "," + y + ")");
+            @{cb}(x,y);
+        };
+    );
+}
+
+fn register_unassign_task_js(model: &mut Model) {
+    let cb = model.link.send_back(Msg::UnassignTask);
+    let cb = move |x: TaskId| cb.emit(x); 
+    
+    js!(
+        unassign_task = function(x) {
+            console.log("unassign_task(" + x + ")");
+            @{cb}(x);
+        };
+    );
+}
             
 fn register_msg_js(model: &mut Model) {
     register_add_project_js(model);
@@ -241,6 +273,9 @@ fn register_msg_js(model: &mut Model) {
     register_get_project_js(model);
     register_get_worker_js(model);
     register_get_task_js(model);
+    register_view_assign_task_js(model);
+    register_assign_task_js(model);
+    register_unassign_task_js(model);
 }
 
 pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
@@ -280,7 +315,7 @@ pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
         }
         Msg::ChangeScene(scene) => {
             log!("Msg::ChangeScene");
-            model.loc.set_hash_path(hash_from_scene(&scene));
+            model.loc.set_hash_path(scene.hash_path());
             model.scene = scene;
         }
         Msg::RefreshScene => {
@@ -299,13 +334,15 @@ pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
                     => Msg::GetWorker(view.worker.id),
                 Scene::TaskDetails(view) 
                     => Msg::GetTask(view.task.id),
+                Scene::AssignTask(view) 
+                    => Msg::ViewAssignTask(view.task.clone()),
             };
 
             model.link.send_self(msg);
         }
         Msg::GetProjects => {
             log!("Msg::GetProjects");
-            let req = get_request(&model.auth_state, "get_projects");
+            let req = model.get("get_projects");
             fetch!(model, req, |projects: Vec<ListProject>| {
                 Msg::ChangeScene(
                     Scene::Projects(
@@ -316,7 +353,7 @@ pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
         }
         Msg::GetWorkers => {
             log!("Msg::GetWorkers");
-            let req = get_request(&model.auth_state, "get_workers");
+            let req = model.get("get_workers");
             fetch!(model, req, |workers: Vec<ListWorker>| {
                 Msg::ChangeScene(
                     Scene::Workers(
@@ -327,7 +364,7 @@ pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
         }
         Msg::GetProject(id) => {
             log!("Msg::GetProject({:?})", id);
-            let req = get_request(&model.auth_state, &format!("get_project/{}", id));
+            let req = model.get(&format!("get_project/{}", id));
             fetch!(model, req, |project: Option<ProjectDetails>| {
                 if let Some(project) = project {
                     Msg::ChangeScene(
@@ -343,7 +380,7 @@ pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
         }
         Msg::GetWorker(id) => {
             log!("Msg::GetWorker({:?})", id);
-            let req = get_request(&model.auth_state, &format!("get_worker/{}", id));
+            let req = model.get(&format!("get_worker/{}", id));
             fetch!(model, req, |worker: Option<WorkerDetails>| {
                 if let Some(worker) = worker {
                     Msg::ChangeScene(
@@ -359,7 +396,7 @@ pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
         }
         Msg::GetTask(id) => {
             log!("Msg::GetTask({:?})", id);
-            let req = get_request(&model.auth_state, &format!("get_task/{}", id));
+            let req = model.get(&format!("get_task/{}", id));
             fetch!(model, req, |task: Option<TaskDetails>| {
                 if let Some(task) = task {
                     Msg::ChangeScene(
@@ -373,10 +410,61 @@ pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
                 }
             });
         }
+        Msg::PreViewAssignTask(id) => {
+            log!("Msg::PreViewAssignTask({})", id);
+            let req = model.get(&format!("get_task/{}", id));
+            fetch!(model, req, |task: Option<TaskDetails>| {
+                if let Some(task) = task {
+                    Msg::ViewAssignTask(task)
+                }
+                else {
+                    Msg::Null
+                }
+            });
+        }
+        Msg::ViewAssignTask(task) => {
+            log!("Msg::ViewAssignTask({})", task.id);
+            model.temp.task = Some(task);
+            let req = model.get("get_workers");
+            fetch!(model, req, move |workers: Vec<ListWorker>| {
+                Msg::PostViewAssignTask(workers)
+            });
+        }
+        Msg::PostViewAssignTask(workers) => {
+            log!("Msg::PostViewAssignTask()");
+            match model.temp.task.take() {
+                None => { () }
+                Some(task) => {
+                    model.link.send_self(
+                        Msg::ChangeScene(
+                            Scene::AssignTask(
+                                AssignTaskView{ task, workers }
+                            )
+                        )
+                    );
+                }
+            }
+        }
+        Msg::AssignTask((task_id, worker_id)) => {
+            log!("Msg::AssignTask({},{})", task_id, worker_id);
+            let params = AssignTaskParams { task_id, worker_id };
+            let req = model.post("assign_task", &params);
+            fetch!(model, req, move |_: ()| {
+                Msg::GetTask(task_id)
+            });
+        }
+        Msg::UnassignTask(task_id) => {
+            log!("Msg::UnassignTask({})", task_id);
+            let params = UnassignTaskParams { task_id };
+            let req = model.post("unassign_task", &params);
+            fetch!(model, req, move |_: ()| {
+                Msg::GetTask(task_id)
+            });
+        }
         Msg::AddProject(name) => {
             log!("Msg::AddProject");
             let params = AddProjectParams { name };
-            let req = json_request(&params, &model.auth_state, "add_project");
+            let req = model.post("add_project", &params);
             fetch!(model, req, |_: ProjectId| {
                 Msg::RefreshScene
             });
@@ -384,7 +472,7 @@ pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
         Msg::AddWorker(name) => {
             log!("Msg::AddWorker");
             let params = AddWorkerParams { name };
-            let req = json_request(&params, &model.auth_state, "add_worker");
+            let req = model.post("add_worker", &params);
             fetch!(model, req, |_: WorkerId| {
                 Msg::RefreshScene
             });
@@ -392,14 +480,14 @@ pub fn update(model: &mut Model, msg: Msg) -> ShouldRender {
         Msg::AddTask((name,project_id)) => {
             log!("Msg::AddTask");
             let params = AddTaskParams { name, project_id };
-            let req = json_request(&params, &model.auth_state, "add_task");
+            let req = model.post("add_task", &params);
             fetch!(model, req, |_: TaskId| {
                 Msg::RefreshScene
             });
         }
         Msg::GetUsers => {
             log!("Msg::GetUsers");
-            let req = get_request(&model.auth_state, "get_users");
+            let req = model.get("get_users");
             fetch!(model, req, |users: Vec<User>| {
                 Msg::ChangeScene(
                     Scene::Users(

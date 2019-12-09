@@ -62,7 +62,7 @@ domain_derive! {
         pub id: TaskId,
         pub name: TaskName,
         pub project: ListProject,
-        pub opt_worker: Option<ListWorker>,
+        pub worker: Option<ListWorker>,
     }
     
     pub struct AddProjectParams {
@@ -76,5 +76,14 @@ domain_derive! {
     pub struct AddTaskParams {
         pub name: TaskName,
         pub project_id: ProjectId,
+    }
+    
+    pub struct AssignTaskParams {
+        pub task_id: TaskId,
+        pub worker_id: WorkerId,
+    }
+    
+    pub struct UnassignTaskParams {
+        pub task_id: TaskId,
     }
 }

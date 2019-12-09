@@ -1,9 +1,6 @@
 <div>
-    <h2>{{ project.name }}</h2>
-    ID: {{ project.id }}
-    <br />
-    
-    Tasks: 
+    <h2>Project Details for {{ project.name }}</h2>
+    <h3>Tasks:</h3>
     <div>
         <input id="add_task_name" placeholder="Task Name" />
         <button onclick='add_task(document.getElementById("add_task_name").value, {{ project.id }});'>Add Task</button>

@@ -1,11 +1,12 @@
 <div>
-    <h2>{{ task.name }}</h2>
-    ID: {{ task.id }} <br />
-    Project: {{ task.project.name }} <br />
-    {% match task.opt_worker %}
+    <h2>Task Details for {{ task.name }}</h2>
+    Project: <a href="javascript:void(0)" onclick="get_project({{ task.project.id }})" > {{ task.project.name }} </a><br />
+    {% match task.worker %}
         {% when Some with (worker) %}
-            Worker: {{ worker.name }} <br />
+            Worker: <a href="javascript:void(0)" onclick="get_worker({{ worker.id }})" > {{ worker.name }} </a>
         {% when None %}
             Worker: unassigned
     {% endmatch %}
+    &nbsp;<a href="javascript:void(0)" onclick="view_assign_task({{ task.id }})">[assign]</a>
+    &nbsp;<a href="javascript:void(0)" onclick="unassign_task({{task.id}})" >[unassign]</a>
 </div>
